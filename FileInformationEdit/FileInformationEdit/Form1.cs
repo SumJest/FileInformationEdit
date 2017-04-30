@@ -1,15 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
 using System.Net;
-
+using System.Text.RegularExpressions;
+using System.Net;
 
 namespace FileInformationEdit
 {
@@ -201,73 +196,7 @@ namespace FileInformationEdit
             CustomBox.Show();
         }
 
-        private void checkForUpdatesToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            HttpWebRequest req;
-            HttpWebResponse res;
-            req = (HttpWebRequest)HttpWebRequest.Create("http://sumjest.ru/programsinfo/fileinfoedit.txt");
-            try
-            {
-                res = (HttpWebResponse)req.GetResponse();
-            }catch(Exception){
-                MessageBox.Show("Unable to establish a connection with the host", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-            WebHeaderCollection header = res.Headers;
 
-            var encoding = ASCIIEncoding.ASCII;
-            using (var reader = new StreamReader(res.GetResponseStream(), encoding))
-            {
-                string version = "";
-                string page = "";
-                string[] firstline = reader.ReadLine().Split(':');
-                if (firstline.Length != 2)
-                {
-                    for (int i = 1; i < firstline.Length; i++)
-                    {
-                        version += firstline[i];
-
-                    }
-                }
-                else
-                {
-                    version = firstline[1];
-                }
-                string[] secondline = reader.ReadLine().Split(':');
-                if (secondline.Length != 2)
-                {
-                    for (int i = 1; i < secondline.Length; i++)
-                    {
-                        if (page == "")
-                        {
-                            page = secondline[i];
-                        }
-                        else
-                        {
-                            page += ":" + secondline[i];
-                        }
-                    }
-                }
-                else
-                {
-                    page = secondline[1];
-                }
-
-                Version v = Version.Parse(version);
-                int ia = v.CompareTo(Version.Parse(Application.ProductVersion));
-                if (ia != 1)
-                {
-                    MessageBox.Show("No updates available!", infoToolStripMenuItem.Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
-                }
-                else
-                {
-                    CustomBox.ShowNV(page, v);
-
-                }
-            }
-
-        }
 
         private void tabPage1_DragDrop(object sender, DragEventArgs e)
         {
@@ -487,6 +416,60 @@ namespace FileInformationEdit
             }
         }
 
-        
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            CheckForUpdates();
+        }
+        private void GetChangeLog()
+        {
+            HttpWebRequest proxy_request = (HttpWebRequest)WebRequest.Create("http://sumjest.ru/index/file_info_editor/0-5");
+            proxy_request.Method = "GET";
+            proxy_request.Timeout = 20000;
+            HttpWebResponse resp = proxy_request.GetResponse() as HttpWebResponse;
+            string html = "";
+            using (StreamReader sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8))
+                html = sr.ReadToEnd();
+            string a = Regex.Match(html, @"<!--Dangerous--><p>Change log:([\s\S]*)\<!--Dangerous-->").ToString();
+            a = a.Replace("<!--Dangerous-->", "");
+            a = a.Replace("<p>", "");
+            a = a.Replace("</p>", "");
+            a = a.Replace("<br />", "");
+            a = a.Replace("&nbsp;", " ");
+            MessageBox.Show(a);
+
+        }
+        private void CheckForUpdates()
+        {
+            try
+            {
+                HttpWebResponse res = (HttpWebResponse)HttpWebRequest.Create("http://sumjest.ru/programsinfo/programs.txt").GetResponse();
+                var encoding = ASCIIEncoding.ASCII;
+                using (var reader = new StreamReader(res.GetResponseStream(), encoding))
+                {
+                    while (!reader.EndOfStream)
+                    {
+                        string line = reader.ReadLine();
+                        string[] linea = line.Split(';');
+
+                        if (line.Split(';')[0].Contains("FileInfoEditor"))
+                        {
+                            Version v;
+                            if (Version.TryParse(line.Split(';')[1], out v)) { if (v.CompareTo(Version.Parse(Application.ProductVersion)) > 0) { menuStrip1.Items.Add("Вышла новая версия программы!", null, onNewClick); } }
+
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, ex.GetType().ToString(), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+        }
+
+        private void onNewClick(object sender, EventArgs e)
+        {
+            GetChangeLog();
+        }
     }
 }

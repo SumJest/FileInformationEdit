@@ -16,11 +16,6 @@ namespace FileInformationEdit
             f.ShowDialog();
         }
 
-        public static void ShowNV(string url, Version v)
-        {
-            Form f = new NewVersion(url, v);
-            f.ShowDialog();
-        }
 
 
 
